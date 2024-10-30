@@ -21,3 +21,38 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
+
+#ifndef TRANSPORT_ESP8266_H
+#define TRANSPORT_ESP8266_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "transport_interface.h"
+
+typedef enum esp8266TransportStatus {
+    ESP8266_TRANSPORT_SUCCESS = 1,           /**< Function successfully completed. */
+    ESP8266_TRANSPORT_INVALID_PARAMETER = 2, /**< At least one parameter was invalid. */
+    ESP8266_TRANSPORT_CONNECT_FAILURE = 3    /**< Initial connection to the server failed. */
+} esp8266TransportStatus_t;
+
+//pHostName must be the target ipv4 address embraced by quotes.
+//ex.: "192.168.0.123", port is the TCP target port number.
+esp8266TransportStatus_t esp8266AT_Connect(const char *pHostName, uint16_t port);
+esp8266TransportStatus_t esp8266AT_Disconnect(void);
+
+int32_t esp8266AT_recv(NetworkContext_t *pNetworkContext,
+                        void * pBuffer,
+                        size_t bytesToRecv);
+
+int32_t esp8266AT_send(NetworkContext_t *pNetworkContext,
+                        const void *pBuffer,
+                        size_t bytesToSend);
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif //TRANSPORT_ESP8266_H
