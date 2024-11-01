@@ -80,7 +80,7 @@ void *txThread(void *args) {
         if (txPos) { //bytes available to send?
             pthread_mutex_lock(&txBufferLock);
             c = *txBuffer;
-            for (int i = 0; i < txPos - 1; i++) {
+            for (unsigned int i = 0; i < txPos - 1; i++) {
                 txBuffer[i] = txBuffer[i+1];
             }
             txPos--;
@@ -110,9 +110,9 @@ xComPortHandle xSerialPortInitMinimal(unsigned long ulWantedBaud, unsigned portB
     }
 
     bufferLen = uxQueueLength;
-    rxBuffer = (char*) malloc(bufferLen, sizeof(char));
+    rxBuffer = (char*) malloc(bufferLen);
     assert(rxBuffer);
-    txBuffer = (char*) malloc(bufferLen, sizeof(char));
+    txBuffer = (char*) malloc(bufferLen);
     assert(txBuffer);
 
     //these threads will only stop when run == 0;
@@ -136,7 +136,7 @@ signed portBASE_TYPE xSerialGetChar(xComPortHandle pxPort, signed char *pcRxedCh
     if (rxPos) {
         pthread_mutex_lock(&rxBufferLock);
         *pcRxedChar = *rxBuffer;
-        for (int i = 0; i < rxPos - 1; i++) {
+        for (unsigned int i = 0; i < rxPos - 1; i++) {
             rxBuffer[i] = rxBuffer[i+1];
         }
         rxPos--;
