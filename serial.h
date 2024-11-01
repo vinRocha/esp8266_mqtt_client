@@ -27,6 +27,10 @@
 #ifndef SERIAL_SERIAL_H
 #define SERIAL_SERIAL_H
 
+#include <cstdint>
+
+#define TickType_t uint16_t
+#define portBASE_TYPE char
 typedef void * xComPortHandle;
 
 typedef enum
