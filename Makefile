@@ -9,11 +9,11 @@ OBJS = \
 
 all: test
 test: $(OBJS)
-	@$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
 
 %.o: %.cpp
-	@$(CXX) -c $(CXXFLAGS) $<
+	$(CXX) -c $(CXXFLAGS) $<
 
 
 .PHONY: clean
