@@ -50,35 +50,6 @@ static esp8266Status check_AT(void);
 inline static void send_AT_command(void);
 inline static void recv_AT_reply(void);
 
-esp8266Status check_AT(void) {
-    //Clear RX buffer
-    while (xSerialGetChar(NULL, (signed char*) at_cmd_response, NO_BLOCK));
-    send_AT_command();
-    usleep(10000); //so esp8266 has enough time to reply.
-    recv_AT_reply();
-
-    if(strcmp(at_cmd_response, "AT\r\r\n\r\nOK\r\n")) {
-        return ERROR;
-    }
-    else {
-        return AT_READY;
-    }
-}
-
-void send_AT_command(void) {
-    //Send AT command
-    xSerialPutChar(NULL, 'A', TX_BLOCK);
-    xSerialPutChar(NULL, 'T', TX_BLOCK);
-    xSerialPutChar(NULL, '\r', TX_BLOCK);
-    xSerialPutChar(NULL, '\n', TX_BLOCK);
-}
-
-void recv_AT_reply(void) {
-    for (int i = 0; i < AT_REPLY_LEN; i++) {
-        xSerialGetChar(NULL, (signed char*) &at_cmd_response[i], RX_BLOCK);
-    }
-}
-
 esp8266TransportStatus_t esp8266AT_Connect(const char *pHostName, uint16_t port) {
 
     char c = 0;
@@ -119,4 +90,33 @@ int32_t esp8266AT_send(NetworkContext_t *pNetworkContext,
                         const void *pBuffer,
                         size_t bytesToSend) {
     return 0;
+}
+
+esp8266Status check_AT(void) {
+    //Clear RX buffer
+    while (xSerialGetChar(NULL, (signed char*) at_cmd_response, NO_BLOCK));
+    send_AT_command();
+    usleep(10000); //so esp8266 has enough time to reply.
+    recv_AT_reply();
+
+    if(strcmp(at_cmd_response, "AT\r\r\n\r\nOK\r\n")) {
+        return ERROR;
+    }
+    else {
+        return AT_READY;
+    }
+}
+
+void send_AT_command(void) {
+    //Send AT command
+    xSerialPutChar(NULL, 'A', TX_BLOCK);
+    xSerialPutChar(NULL, 'T', TX_BLOCK);
+    xSerialPutChar(NULL, '\r', TX_BLOCK);
+    xSerialPutChar(NULL, '\n', TX_BLOCK);
+}
+
+void recv_AT_reply(void) {
+    for (int i = 0; i < AT_REPLY_LEN; i++) {
+        xSerialGetChar(NULL, (signed char*) &at_cmd_response[i], RX_BLOCK);
+    }
 }

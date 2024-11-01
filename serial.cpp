@@ -50,55 +50,6 @@ static int run = 0; //threads will run while run != 0
 void *rxThread(void *args);
 void *txThread(void *args);
 
-void *rxThread(void *args) {
-    char c;
-    while (run) {
-        if (read(serial_fd, &c, 1) == -1) { //read will block till there is something to read in serial device.
-            perror("Error trying to read from serial device.");
-            run = 0;
-            break;
-        }
-check_rx_buffer:
-        if (rxPos < bufferLen) {
-            pthread_mutex_lock(&rxBufferLock);
-            *(rxBuffer + rxPos) = c;
-            rxPos++;
-            pthread_mutex_unlock(&rxBufferLock);
-        }
-        else {
-            sleep(1); //block, then check for available space in rxBuffer;
-            goto check_rx_buffer;
-        }
-    }
-
-    return NULL;
-}
-
-void *txThread(void *args) {
-    char c;
-    while (run) {
-        if (txPos) { //bytes available to send?
-            pthread_mutex_lock(&txBufferLock);
-            c = *txBuffer;
-            for (unsigned int i = 0; i < txPos - 1; i++) {
-                txBuffer[i] = txBuffer[i+1];
-            }
-            txPos--;
-            pthread_mutex_unlock(&txBufferLock);
-            if (write(serial_fd, &c, 1) == -1) {
-                perror("Error trying to write to serial device.");
-                run = 0;
-                break;
-            }
-        }
-        else {
-            sleep(1); //block, then check for bytes in tx_Buffer again.
-        }
-    }
-
-    return NULL;
-}
-
 xComPortHandle xSerialPortInitMinimal(unsigned long ulWantedBaud, unsigned portBASE_TYPE uxQueueLength) {
 
     int rc;
@@ -194,4 +145,53 @@ void vSerialClose(xComPortHandle xPort) {
     }
 
     return;
+}
+
+void *rxThread(void *args) {
+    char c;
+    while (run) {
+        if (read(serial_fd, &c, 1) == -1) { //read will block till there is something to read in serial device.
+            perror("Error trying to read from serial device.");
+            run = 0;
+            break;
+        }
+check_rx_buffer:
+        if (rxPos < bufferLen) {
+            pthread_mutex_lock(&rxBufferLock);
+            *(rxBuffer + rxPos) = c;
+            rxPos++;
+            pthread_mutex_unlock(&rxBufferLock);
+        }
+        else {
+            sleep(1); //block, then check for available space in rxBuffer;
+            goto check_rx_buffer;
+        }
+    }
+
+    return NULL;
+}
+
+void *txThread(void *args) {
+    char c;
+    while (run) {
+        if (txPos) { //bytes available to send?
+            pthread_mutex_lock(&txBufferLock);
+            c = *txBuffer;
+            for (unsigned int i = 0; i < txPos - 1; i++) {
+                txBuffer[i] = txBuffer[i+1];
+            }
+            txPos--;
+            pthread_mutex_unlock(&txBufferLock);
+            if (write(serial_fd, &c, 1) == -1) {
+                perror("Error trying to write to serial device.");
+                run = 0;
+                break;
+            }
+        }
+        else {
+            sleep(1); //block, then check for bytes in tx_Buffer again.
+        }
+    }
+
+    return NULL;
 }
