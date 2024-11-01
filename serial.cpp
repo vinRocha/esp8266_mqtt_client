@@ -66,7 +66,7 @@ check_rx_buffer:
             pthread_mutex_unlock(&rxBufferLock);
         }
         else {
-            sleep(5); //block, then check for available space in rxBuffer;
+            sleep(1); //block, then check for available space in rxBuffer;
             goto check_rx_buffer;
         }
     }
