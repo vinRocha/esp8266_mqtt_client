@@ -154,18 +154,9 @@ static esp8266Status start_TCP(const char *pHostName, const char *port) {
         xSerialPutChar(NULL, *(port + i), TX_BLOCK);
     }
     xSerialPutChar(NULL, '\r', TX_BLOCK);
-
-    SLEEP;  //so serial interface has enough time to receive echo.
-    //Clear echo...
-    while (xSerialGetChar(NULL, (signed char*) &c, NO_BLOCK));
-
-    //Complete the command:
     xSerialPutChar(NULL, '\n', TX_BLOCK);
 
     SLEEP; //so esp8266 has enough time to reply us.
-    xSerialGetChar(NULL, (signed char*) &c, NO_BLOCK); //\r
-    xSerialGetChar(NULL, (signed char*) &c, NO_BLOCK); //\n
-
     xSerialGetChar(NULL, (signed char*) &c, NO_BLOCK); //C, if success
 
     if (c != 'C') {
@@ -174,6 +165,5 @@ static esp8266Status start_TCP(const char *pHostName, const char *port) {
 
     //Clear Rx buffer
     while (xSerialGetChar(NULL, (signed char*) &c, NO_BLOCK));
-
     return CONNECTED;
 }
