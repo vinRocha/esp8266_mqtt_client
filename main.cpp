@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <iostream>
 #include <unistd.h>
 #include "transport_esp8266.h"
@@ -10,6 +11,8 @@ int main(int argc, char * argv[]) {
 
     rc = esp8266AT_Connect(address, port);
     std::cout << "rc: " << rc << std::endl;
+
+    getchar();
 
     esp8266AT_Disconnect();
 

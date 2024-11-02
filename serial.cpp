@@ -85,19 +85,19 @@ signed portBASE_TYPE xSerialGetChar(xComPortHandle pxPort, signed char *pcRxedCh
         exit(-1);
     }
 
-    if (rxPos) {
-        pthread_mutex_lock(&rxBufferLock);
-        *pcRxedChar = *rxBuffer;
-        for (unsigned int i = 0; i < rxPos - 1; i++) {
-            rxBuffer[i] = rxBuffer[i+1];
+    for (uint16_t d = 0xffff; d > 0; d--) {
+        if (rxPos) {
+            pthread_mutex_lock(&rxBufferLock);
+            *pcRxedChar = *rxBuffer;
+            for (unsigned int i = 0; i < rxPos - 1; i++) {
+                rxBuffer[i] = rxBuffer[i+1];
+            }
+            rxPos--;
+            pthread_mutex_unlock(&rxBufferLock);
+            return 1;
         }
-        rxPos--;
-        pthread_mutex_unlock(&rxBufferLock);
-        return 1;
     }
-    else {
-        return 0;
-    }
+    return 0;
 }
 
 signed portBASE_TYPE xSerialPutChar(xComPortHandle pxPort, signed char cOutChar, TickType_t xBlockTime) {
