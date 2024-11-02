@@ -9,12 +9,7 @@ OBJS = \
 
 all: test
 test: $(OBJS)
-	$(CXX) $(CXXFLAGS) $^ -o $@
-
-
-%.o: %.cpp
-	$(CXX) -c $(CXXFLAGS) $<
-
+	$(CXX) -o $@ $^
 
 .PHONY: clean
 clean:
