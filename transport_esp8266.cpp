@@ -27,9 +27,12 @@
 #include "serial.h"
 
 //Below includes will change in FreeRTOS implementation
+#include <cstdio>
+#include <errno.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <mqueue.h>
 #include <pthread.h>
-#include <unistd.h>
 #define SLEEP usleep(200000)
 
 /* As networking data and control data all comes from
@@ -38,8 +41,11 @@
  * accordingly. dataQueue and controlQueue. The transport
  * program shall consume data from these buffers.
  */
-static pthread_t rxThread_id; //in FreeRTOS this will be an high priority task.
-void *rxThread(void *args);
+static pthread_t thread_id; //in FreeRTOS this will be an high priority task.
+static void *rxThread(void *args);
+static mqd_t controlQTx, controlQRx, dataQTx, dataQRx;
+static char const *control_mq_name = "/esp8266_control";
+static char const *data_mq_name = "/esp8266_data";
 
 //constants
 int const BUFFER_LEN = 128;
@@ -49,8 +55,10 @@ TickType_t const TX_BLOCK = 0x00;
 TickType_t const NO_BLOCK = 0x00;
 int const AT_REPLY_LEN = 7;
 
-enum esp8266Status { //internal status
+enum transportStatus {
     AT_UNINITIALIZED = 0,
+    MQUEUE_UNINITIALIZED,
+    RX_THREAD_UNINITIALIZED,
     AT_READY,
     CONNECTED,
     ERROR
@@ -58,8 +66,8 @@ enum esp8266Status { //internal status
 
 static char esp8266_status = AT_UNINITIALIZED;
 
-static esp8266Status check_AT(void);
-static esp8266Status start_TCP(const char *pHostName, const char *port);
+static void check_AT(void);
+static void start_TCP(const char *pHostName, const char *port);
 
 esp8266TransportStatus_t esp8266AT_Connect(const char *pHostName, const char *port) {
 
@@ -69,25 +77,56 @@ esp8266TransportStatus_t esp8266AT_Connect(const char *pHostName, const char *po
 
     if (esp8266_status == AT_UNINITIALIZED) {
         xSerialPortInitMinimal(BAUD_RATE, BUFFER_LEN);
+        esp8266_status = MQUEUE_UNINITIALIZED;
+    }
+
+    if (esp8266_status == MQUEUE_UNINITIALIZED) {
+        controlQTx = mq_open(control_mq_name, O_WRONLY | O_CREAT | O_NONBLOCK, S_IRUSR | S_IWUSR, NULL);
+        controlQRx = mq_open(control_mq_name, O_RDONLY);
+        dataQTx = mq_open(data_mq_name, O_WRONLY | O_CREAT | O_NONBLOCK, S_IRUSR | S_IWUSR, NULL);
+        dataQRx = mq_open(data_mq_name, O_RDONLY);
+        if ((controlQTx == (mqd_t) -1) || (controlQRx == (mqd_t) -1) || 
+            (dataQTx == (mqd_t) -1)    || (dataQRx == (mqd_t) -1)) {
+            return ESP8266_TRANSPORT_CONNECT_FAILURE;
+        }
+        esp8266_status = RX_THREAD_UNINITIALIZED;
+    }
+
+    if (esp8266_status == RX_THREAD_UNINITIALIZED) {
+        if (pthread_create(&thread_id, NULL, &rxThread, NULL)) {
+            return ESP8266_TRANSPORT_CONNECT_FAILURE;
+        }
         esp8266_status = AT_READY;
     }
 
-    if (pthread_create(&rxThread_id, NULL, rxThread, NULL)) {}
+    if (esp8266_status == AT_READY) {
+        check_AT();
+        if (esp8266_status == ERROR) {
+            return ESP8266_TRANSPORT_CONNECT_FAILURE;
+        }
 
-    if ((esp8266_status = check_AT()) == ERROR) {
-        return ESP8266_TRANSPORT_CONNECT_FAILURE;
+        start_TCP(pHostName, port);
+        if (esp8266_status == ERROR) {
+            return ESP8266_TRANSPORT_CONNECT_FAILURE;
+        }
+        
+        return ESP8266_TRANSPORT_SUCCESS;
     }
 
-    if ((esp8266_status = start_TCP(pHostName, port)) != CONNECTED) {
-        return ESP8266_TRANSPORT_CONNECT_FAILURE;
-    }
-
-    return ESP8266_TRANSPORT_SUCCESS;
+    return ESP8266_TRANSPORT_CONNECT_FAILURE;
 }
 
 esp8266TransportStatus_t esp8266AT_Disconnect(void) {
-    vSerialClose(NULL);
     esp8266_status = AT_UNINITIALIZED;
+    pthread_join(thread_id, NULL);
+    mq_close(controlQTx);
+    mq_close(controlQRx);
+    mq_close(dataQTx);
+    mq_close(dataQRx);
+    vSerialClose(NULL);
+    if (errno) {
+        perror("Error after closing message queues.");
+    }
     return ESP8266_TRANSPORT_SUCCESS;
 }
 
@@ -99,7 +138,7 @@ int32_t esp8266AT_send(NetworkContext_t *pNetworkContext, const void *pBuffer, s
     return 0;
 }
 
-esp8266Status check_AT(void) {
+void check_AT(void) {
     char at_cmd_response[AT_REPLY_LEN] = {0};
 
     //Send AT command
@@ -122,14 +161,15 @@ esp8266Status check_AT(void) {
     }
 
     if(strcmp(at_cmd_response, "\r\nOK\r\n")) {
-        return ERROR;
+        esp8266_status = ERROR;
     }
     else {
-        return AT_READY;
+        esp8266_status = AT_READY;
     }
+    return;
 }
 
-static esp8266Status start_TCP(const char *pHostName, const char *port) {
+void start_TCP(const char *pHostName, const char *port) {
 
     char c;
 
@@ -173,10 +213,29 @@ static esp8266Status start_TCP(const char *pHostName, const char *port) {
     xSerialGetChar(NULL, (signed char*) &c, NO_BLOCK); //C, if success
 
     if (c != 'C') {
-        return ERROR;
+        esp8266_status = ERROR;
     }
-
+    else {
+        esp8266_status = CONNECTED;
+    }
     //Clear Rx buffer
     while (xSerialGetChar(NULL, (signed char*) &c, NO_BLOCK));
-    return CONNECTED;
+    return;
+}
+
+void *rxThread(void *args) {
+
+    char c;
+
+    //Block until we update esp8266_status in the main therad to AT_READY;
+    while(esp8266_status == RX_THREAD_UNINITIALIZED);
+
+    //Keep running till esp8266AT_Disconnect() is called;
+    while(esp8266_status > RX_THREAD_UNINITIALIZED) {
+        //if (xSerialGetChar(NULL, (signed char*) &c, RX_BLOCK)) {
+        //    mq_send(controlQTx, &c, 1, 0);
+        //}
+    }
+
+    return NULL;
 }
