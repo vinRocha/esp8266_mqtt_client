@@ -1,6 +1,6 @@
 SHELL=/usr/bin/sh
 
-CXXFLAGS = -Wall -I.
+CXXFLAGS = -g -Wall -I.
 
 OBJS = \
 	serial.o \
