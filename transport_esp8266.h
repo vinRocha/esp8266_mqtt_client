@@ -39,11 +39,11 @@ typedef enum esp8266TransportStatus {
 
 //pHostName must be the target ipv4 address embraced by quotes.
 //ex.: "192.168.0.123", port is the TCP target port number.
-esp8266TransportStatus_t esp8266AT_Connect(const char *pHostName, uint16_t port);
+esp8266TransportStatus_t esp8266AT_Connect(const char *pHostName, const char *port);
 esp8266TransportStatus_t esp8266AT_Disconnect(void);
 
 int32_t esp8266AT_recv(NetworkContext_t *pNetworkContext,
-                        void * pBuffer,
+                        void *pBuffer,
                         size_t bytesToRecv);
 
 int32_t esp8266AT_send(NetworkContext_t *pNetworkContext,
