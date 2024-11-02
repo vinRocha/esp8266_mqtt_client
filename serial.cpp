@@ -163,7 +163,7 @@ check_rx_buffer:
             pthread_mutex_unlock(&rxBufferLock);
         }
         else {
-            sleep(1); //block, then check for available space in rxBuffer;
+            usleep(10000); //block, then check for available space in rxBuffer;
             goto check_rx_buffer;
         }
     }
@@ -189,7 +189,7 @@ void *txThread(void *args) {
             }
         }
         else {
-            sleep(1); //block, then check for bytes in tx_Buffer again.
+            usleep(10000); //block, then check for bytes in tx_Buffer again.
         }
     }
 
