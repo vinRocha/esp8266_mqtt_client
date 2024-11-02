@@ -34,6 +34,7 @@
 
 //constants
 char const *serialPortName = "/dev/ttyUSB0";
+char const new_line = '\n';
 
 //global variables
 static int serial_fd = 0;
@@ -47,8 +48,8 @@ static pthread_mutex_t txBufferLock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_t comThreads[2]; //rx and tx threads respectivelly
 static int run = 0; //threads will run while run != 0
 
-void *rxThread(void *args);
-void *txThread(void *args);
+static void *rxThread(void *args);
+static void *txThread(void *args);
 
 xComPortHandle xSerialPortInitMinimal(unsigned long ulWantedBaud, unsigned portBASE_TYPE uxQueueLength) {
 
@@ -127,8 +128,8 @@ void vSerialClose(xComPortHandle xPort) {
         //stop threads.
         run = 0; rxPos = 0; txPos = 0;
         //rx thread may be blocked at read...
-        //thus send some data. The esp8266 device will echo it unblocking the rxThread...
-        write(serial_fd, txBuffer, 1);
+        //thus send \n. The esp8266 device will reply with an error unblocking the rxThread...
+        write(serial_fd, &new_line, 1);
         rc = pthread_join(comThreads[0], NULL);
         assert(!rc);
         rc = pthread_join(comThreads[1], NULL);
