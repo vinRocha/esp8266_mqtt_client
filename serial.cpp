@@ -68,9 +68,9 @@ xComPortHandle xSerialPortInitMinimal(unsigned long ulWantedBaud, unsigned portB
 
     //these threads will only stop when run == 0;
     run = 1;
-    rc = pthread_create(&comThreads[0], NULL, rxThread, NULL);
+    rc = pthread_create(&comThreads[0], NULL, &rxThread, NULL);
     assert(!rc);
-    rc = pthread_create(&comThreads[1], NULL, txThread, NULL);
+    rc = pthread_create(&comThreads[1], NULL, &txThread, NULL);
     assert(!rc);
 
     return NULL;
