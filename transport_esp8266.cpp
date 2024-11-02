@@ -26,9 +26,20 @@
 #include "transport_esp8266.h"
 #include "serial.h"
 
-//in FreeRTOS use vTaskDelay()
+//Below includes will change in FreeRTOS implementation
+#include <mqueue.h>
+#include <pthread.h>
 #include <unistd.h>
 #define SLEEP usleep(200000)
+
+/* As networking data and control data all comes from
+ * same UART interface, rxThread will be responsible to
+ * collect them all and populate in two different queues
+ * accordingly. dataQueue and controlQueue. The transport
+ * program shall consume data from these buffers.
+ */
+static pthread_t rxThread_id; //in FreeRTOS this will be an high priority task.
+void *rxThread(void *args);
 
 //constants
 int const BUFFER_LEN = 128;
@@ -60,6 +71,8 @@ esp8266TransportStatus_t esp8266AT_Connect(const char *pHostName, const char *po
         xSerialPortInitMinimal(BAUD_RATE, BUFFER_LEN);
         esp8266_status = AT_READY;
     }
+
+    if (pthread_create(&rxThread_id, NULL, rxThread, NULL)) {}
 
     if ((esp8266_status = check_AT()) == ERROR) {
         return ESP8266_TRANSPORT_CONNECT_FAILURE;
