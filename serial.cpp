@@ -33,8 +33,8 @@
 #include "serial.h"
 
 //constants
-char const *serialPortName = "/dev/ttyUSB0";
-char const new_line = '\n';
+const char *serialPortName = "/dev/ttyUSB0";
+const char new_line = '\n';
 
 //global variables
 static int serial_fd = 0;
@@ -85,7 +85,7 @@ signed portBASE_TYPE xSerialGetChar(xComPortHandle pxPort, signed char *pcRxedCh
         exit(-1);
     }
 
-    for (uint16_t d = 0xffff; d > 0; d--) {
+    for (unsigned char d = 6; d > 0; d--) {
         if (rxPos) {
             pthread_mutex_lock(&rxBufferLock);
             *pcRxedChar = *rxBuffer;
@@ -96,6 +96,7 @@ signed portBASE_TYPE xSerialGetChar(xComPortHandle pxPort, signed char *pcRxedCh
             pthread_mutex_unlock(&rxBufferLock);
             return 1;
         }
+        usleep(10000);
     }
     return 0;
 }
@@ -190,7 +191,7 @@ void *txThread(void *args) {
             }
         }
         else {
-            usleep(10000); //block, then check for bytes in tx_Buffer again.
+            usleep(1000); //block, then check for bytes in tx_Buffer again.
         }
     }
 
