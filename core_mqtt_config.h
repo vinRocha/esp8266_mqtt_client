@@ -34,39 +34,14 @@
  * macro SHOULD NOT be set.
  */
 
-#ifndef CORE_MQTT_CONFIG_DEFAULTS_H_
-#define CORE_MQTT_CONFIG_DEFAULTS_H_
+#ifndef CORE_MQTT_CONFIG_H_
+#define CORE_MQTT_CONFIG_H_
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus
     extern "C" {
 #endif
 /* *INDENT-ON* */
-
-/* MQTT_DO_NOT_USE_CUSTOM_CONFIG allows building the MQTT library
- * without a custom config. If a custom config is provided, the
- * MQTT_DO_NOT_USE_CUSTOM_CONFIG macro should not be defined. */
-#ifndef MQTT_DO_NOT_USE_CUSTOM_CONFIG
-/* Include custom config file before other headers. */
-    #include "core_mqtt_config.h"
-#endif
-
-/* The macro definition for MQTT_DO_NOT_USE_CUSTOM_CONFIG is for Doxygen
- * documentation only. */
-
-/**
- * @brief Define this macro to build the MQTT library without the custom config
- * file core_mqtt_config.h.
- *
- * Without the custom config, the MQTT library builds with
- * default values of config macros defined in core_mqtt_config_defaults.h file.
- *
- * If a custom config is provided, then MQTT_DO_NOT_USE_CUSTOM_CONFIG should not
- * be defined.
- */
-#ifdef DOXYGEN
-    #define MQTT_DO_NOT_USE_CUSTOM_CONFIG
-#endif
 
 /**
  * @ingroup mqtt_constants
@@ -201,4 +176,4 @@
 #endif
 /* *INDENT-ON* */
 
-#endif /* ifndef CORE_MQTT_CONFIG_DEFAULTS_H_ */
+#endif /* ifndef CORE_MQTT_CONFIG_H_ */
