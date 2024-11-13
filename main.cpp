@@ -44,10 +44,12 @@
  * MQTT connection.
  */
 
+#include <cstdlib>
+#include <cstdio>
 #include <cstdint>
 #include <cerrno>
-#include <cstdio>
 #include <iostream>
+#include <chrono>
 #include <pthread.h>
 
 #include "core_mqtt.h"
@@ -55,18 +57,19 @@
 
 //MQTT Client configuration:
 #define configMQTT_BROKER_ENDPOINT                "192.168.0.235"
-#define configCLIENT_IDENTIFIER                   "esp8266-linux_client"
 #define configMQTT_BROKER_PORT                    "1883"
-#define mqttexampleRETRY_MAX_ATTEMPTS             5U
-#define mqttexampleRETRY_MAX_BACKOFF_DELAY_MS     1000U
-#define mqttexampleTOPIC_PREFIX	                  "/mqtt/test"
-#define mqttexampleTOPIC_COUNT                    3
-#define mqttexampleTOPIC_BUFFER_SIZE              100U
-#define mqttexampleMESSAGE                        "Hello World from ESP8266!"
-#define mqttexampleKEEP_ALIVE_TIMEOUT_S           60U
-#define mqttexampleTRANSPORT_SEND_RECV_TIMEOUT_MS 200U
-#define mqttexampleOUTGOING_PUBLISH_RECORD_LEN    10U
-#define mqttexampleINCOMING_PUBLISH_RECORD_LEN    10U
+#define configNETWORK_BUFFER_SIZE                 128U
+#define configCLIENT_IDENTIFIER                   "esp8266-linux_client"
+#define configRETRY_MAX_ATTEMPTS                  5U
+#define configRETRY_MAX_BACKOFF_DELAY_MS          1000U
+#define configTOPIC_PREFIX     	                  "/mqtt/test"
+#define configTOPIC_COUNT                         3
+#define configTOPIC_BUFFER_SIZE                   100U
+#define configMESSAGE                             "Hello World from ESP8266!"
+#define configKEEP_ALIVE_TIMEOUT_S                60U
+#define configTRANSPORT_SEND_RECV_TIMEOUT_MS      200U
+#define configOUTGOING_PUBLISH_RECORD_LEN         10U
+#define configINCOMING_PUBLISH_RECORD_LEN         10U
 
 /**
  * @brief Each compilation unit that consumes the NetworkContext must define it.
@@ -85,7 +88,7 @@ static bool stop = false;
 /**
  * @brief Static buffer used to hold MQTT messages being sent and received.
  */
-static uint8_t ucSharedBuffer[ democonfigNETWORK_BUFFER_SIZE ];
+static uint8_t ucSharedBuffer[ configNETWORK_BUFFER_SIZE ];
 
 /**
  * @brief Global entry time into the application to use as a reference timestamp
@@ -93,7 +96,7 @@ static uint8_t ucSharedBuffer[ democonfigNETWORK_BUFFER_SIZE ];
  * between the current time and the global entry time. This will reduce the chances
  * of overflow for the 32 bit unsigned integer used for holding the timestamp.
  */
-static uint32_t ulGlobalEntryTimeMs;
+static std::chrono::system_clock::time_point ulGlobalEntryTimeMs;
 
 /**
  * @brief Packet Identifier generated when Publish request was sent to the broker;
@@ -119,7 +122,7 @@ static uint16_t usUnsubscribePacketIdentifier;
  */
 typedef struct topicFilterContext
 {
-    uint8_t pcTopicFilter[ mqttexampleTOPIC_BUFFER_SIZE ];
+    uint8_t pcTopicFilter[ configTOPIC_BUFFER_SIZE ];
     MQTTSubAckStatus_t xSubAckStatus;
 } topicFilterContext_t;
 
@@ -127,13 +130,13 @@ typedef struct topicFilterContext
  * @brief An array containing the context of a SUBACK; the SUBACK status
  * of a filter is updated when the event callback processes a SUBACK.
  */
-static topicFilterContext_t xTopicFilterContext[ mqttexampleTOPIC_COUNT ];
+static topicFilterContext_t xTopicFilterContext[ configTOPIC_COUNT ];
 
 /** @brief Static buffer used to hold MQTT messages being sent and received. */
 static MQTTFixedBuffer_t xBuffer =
 {
     ucSharedBuffer,
-    democonfigNETWORK_BUFFER_SIZE
+    configNETWORK_BUFFER_SIZE
 };
 
 /**
@@ -143,7 +146,7 @@ static MQTTFixedBuffer_t xBuffer =
  * This is passed into #MQTT_InitStatefulQoS to allow for QoS > 0.
  *
  */
-static MQTTPubAckInfo_t pOutgoingPublishRecords[ mqttexampleOUTGOING_PUBLISH_RECORD_LEN ];
+static MQTTPubAckInfo_t pOutgoingPublishRecords[ configOUTGOING_PUBLISH_RECORD_LEN ];
 
 /**
  * @brief Array to track the incoming publish records for incoming publishes
@@ -152,7 +155,7 @@ static MQTTPubAckInfo_t pOutgoingPublishRecords[ mqttexampleOUTGOING_PUBLISH_REC
  * This is passed into #MQTT_InitStatefulQoS to allow for QoS > 0.
  *
  */
-static MQTTPubAckInfo_t pIncomingPublishRecords[ mqttexampleINCOMING_PUBLISH_RECORD_LEN ];
+static MQTTPubAckInfo_t pIncomingPublishRecords[ configINCOMING_PUBLISH_RECORD_LEN ];
 
 static void initialize();
 static void loop();
@@ -186,7 +189,7 @@ static void prvUpdateSubAckStatus( MQTTPacketInfo_t * pxPacketInfo );
 static void prvMQTTSubscribeWithBackoffRetries( MQTTContext_t * pxMQTTContext );
 
 /**
- * @brief Publishes a message mqttexampleMESSAGE on mqttexampleTOPIC topic.
+ * @brief Publishes a message configMESSAGE on mqttexampleTOPIC topic.
  *
  * @param[in] pxMQTTContext MQTT context pointer.
  */
@@ -260,7 +263,6 @@ static void prvInitializeTopicBuffers( void );
 int main(int argc, char * argv[]) {
 
   initialize();
-
   pthread_t run_thread_id;
   if (pthread_create(run_thread_id, NULL, &run_thread, NULL)) {
     perror("Not able to spawn run thread.");
@@ -268,14 +270,93 @@ int main(int argc, char * argv[]) {
   }
 
   std::cout << "Press enter to exit..." << std::endl;
-
   getchar();
-
   stop = true;
   pthread_join(run_thread_id, NULL);
-
   return 0;
 }
 
+void initialize() {
+  ulGlobalEntryTimeMs = std::chrono::system_clock::now();
+}
 
+void loop() {
+  static uint32_t ulPublishCount = 0, ulTopicCount = 0;
+  static const uint32_t ulMaxPublishCount = 5;
+  static NetworkContext_t xNetworkContext = {0};
+  static MQTTContext_t xMQTTContext = {0};
+  static MQTTStatus_t xMQTTStatus;
+  static esp8266TransportStatus_t xNetworkStatus;
 
+  std::cout << "----------STARTING DEMO----------" << std::endl;
+  prvInitializeTopicBuffers();
+  xNetworkStatus = esp8266AT_Connect(configMQTT_BROKER_ENDPOINT, configMQTT_BROKER_PORT);
+  if (xNetworkStatus != ESP8266_TRANSPORT_SUCCESS) {
+    std::cerr << "Failed to initialise network." << std::endl;
+    exit(-1);
+  }
+
+  std::cout << "Creating an MQTT connection to " << configMQTT_BROKER_ENDPOINT "." << std::endl;
+  prvCreateMQTTConnectionWithBroker(&xMQTTContext, &xNetworkContext);
+
+  /**************************** Subscribe. ******************************/
+
+  /* If the server rejected the subscription request, attempt to resubscribe to the
+   * topic. Attempts are made according to the exponential backoff retry strategy
+   * implemented in BackoffAlgorithm. */
+  prvMQTTSubscribeWithBackoffRetries(&xMQTTContext);
+
+  /**************************** Publish and Keep-Alive Loop. ******************************/
+
+  /* Publish messages with QoS2, and send and process keep-alive messages. */
+  for (ulPublishCount = 0; ulPublishCount < ulMaxPublishCount; ulPublishCount++) {
+    prvMQTTPublishToTopics(&xMQTTContext);
+
+    /* Process incoming publish echo. Since the application subscribed and published
+     * to the same topic, the broker will send the incoming publish message back
+     * to the application. */
+    LogInfo(("Attempt to receive publishes from broker.\r\n"));
+    xMQTTStatus = prvProcessLoopWithTimeout(&xMQTTContext, configPROCESS_LOOP_TIMEOUT_MS);
+    configASSERT(xMQTTStatus == MQTTSuccess);
+
+    /* Leave connection idle for some time. */
+    LogInfo(("Keeping Connection Idle...\r\n\r\n"));
+    vTaskDelay(mqttexampleDELAY_BETWEEN_PUBLISHES_TICKS);
+  }
+
+  /************************ Unsubscribe from the topic. **************************/
+
+  prvMQTTUnsubscribeFromTopics(&xMQTTContext);
+
+  /* Process incoming UNSUBACK packet from the broker. */
+  xMQTTStatus = prvProcessLoopWithTimeout(&xMQTTContext, configPROCESS_LOOP_TIMEOUT_MS);
+  configASSERT(xMQTTStatus == MQTTSuccess);
+
+  /**************************** Disconnect. ******************************/
+
+  /* Send an MQTT DISCONNECT packet over the already-connected TLS over TCP connection.
+   * There is no corresponding response expected from the broker. After sending the
+   * disconnect request, the client must close the network connection. */
+  LogInfo(("Disconnecting the MQTT connection with %s.\r\n", democonfigMQTT_BROKER_ENDPOINT));
+  xMQTTStatus = MQTT_Disconnect(&xMQTTContext);
+  configASSERT(xMQTTStatus == MQTTSuccess);
+
+  /* Close the network connection.  */
+  Plaintext_FreeRTOS_Disconnect(&xNetworkContext);
+
+  /* Reset SUBACK status for each topic filter after completion of the subscription request cycle. */
+  for(ulTopicCount = 0; ulTopicCount < mqttexampleTOPIC_COUNT; ulTopicCount++) {
+      xTopicFilterContext[ulTopicCount].xSubAckStatus = MQTTSubAckFailure;
+  }
+
+  /* Wait for some time between two iterations to ensure that we do not
+   * bombard the broker. */
+  LogInfo(("prvMQTTDemoTask() completed an iteration successfully. Total free heap is %u.\r\n", xPortGetFreeHeapSize()));
+  LogInfo(("Demo completed successfully.\r\n"));
+  LogInfo(("-------DEMO FINISHED-------\r\n"));
+  LogInfo(("Short delay before starting the next iteration.... \r\n\r\n"));
+  vTaskDelay(mqttexampleDELAY_BETWEEN_DEMO_ITERATIONS_TICKS);
+}
+
+void *run_thread(void *args) {
+}
