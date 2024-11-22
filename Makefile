@@ -1,7 +1,7 @@
 SHELL=/usr/bin/sh
 
 CFLAGS = -g -Wall -I. -I./coreMQTT/source/include -I./coreMQTT/source/interface
-CXXFLAGS = $(CFLAGS)
+CXXFLAGS = $(CFLAGS) -fpermissive
 
 all: app
 
