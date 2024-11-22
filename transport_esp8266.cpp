@@ -75,7 +75,7 @@ esp8266TransportStatus_t esp8266AT_Connect(const char *pHostName, const char *po
 
     struct mq_attr mqstat;
     memset(&mqstat, 0, sizeof(struct mq_attr));
-    mqstat.mq_maxmsg = BUFFER_LEN / 4;
+    mqstat.mq_maxmsg = BUFFER_LEN / 2;
     mqstat.mq_msgsize = 1;
 
     if (esp8266_status == CONNECTED) {
@@ -128,7 +128,6 @@ esp8266TransportStatus_t esp8266AT_Connect(const char *pHostName, const char *po
 esp8266TransportStatus_t esp8266AT_Disconnect(void) {
     esp8266_status = AT_UNINITIALIZED;
     pthread_join(thread_id, NULL);
-    errno = 0;
     mq_close(controlQTx);
     mq_close(controlQRx);
     mq_close(dataQTx);

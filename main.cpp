@@ -70,17 +70,17 @@
 #define configCLIENT_IDENTIFIER                   "esp8266-linux_client"
 #define configRETRY_MAX_ATTEMPTS                  5U
 #define configRETRY_MAX_BACKOFF_DELAY_MS          1000U
-#define configMAX_PUBLUSH_COUNT                   3
+#define configMAX_PUBLUSH_COUNT                   5
 #define configTOPIC_PREFIX     	                  "/mqtt/test"
-#define configTOPIC_COUNT                         1
+#define configTOPIC_COUNT                         3
 #define configTOPIC_BUFFER_SIZE                   100U
 #define configMESSAGE                             "Hello World from ESP8266!"
 #define configKEEP_ALIVE_TIMEOUT_S                40U
-#define configOUTGOING_PUBLISH_RECORD_LEN         16U
-#define configINCOMING_PUBLISH_RECORD_LEN         16U
-#define configPROCESS_LOOP_TIMEOUT_MS             1000U
+#define configOUTGOING_PUBLISH_RECORD_LEN         10U
+#define configINCOMING_PUBLISH_RECORD_LEN         10U
+#define configPROCESS_LOOP_TIMEOUT_MS             5000U
 #define configDELAY_BETWEEN_PUBLISHES_S           1
-#define configDELAY_BETWEEN_DEMO_ITERATIONS_S     3
+#define configDELAY_BETWEEN_DEMO_ITERATIONS_S     5
 #define configCONNACK_RECV_TIMEOUT_MS             2000U
 
 /*
