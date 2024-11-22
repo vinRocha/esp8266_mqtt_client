@@ -80,17 +80,15 @@
 #define configDELAY_BETWEEN_DEMO_ITERATIONS_S     3
 #define configCONNACK_RECV_TIMEOUT_MS             2000U
 
-/**
+/*
  * @brief Each compilation unit that consumes the NetworkContext must define it.
  * It should contain a single pointer to the type of your desired transport.
  * When using multiple transports in the same compilation unit, define this pointer as void *.
  *
  * @note Transport stacks are defined in FreeRTOS-Plus/Source/Application-Protocols/network_transport.
+ *
+ * Not needed for transport_esp8266
  */
-//Not needed for transport_esp8266
-struct NetworkContext {
-  int a;
-};
 
 //Varible to control run_thread
 static bool stop = false;
@@ -292,7 +290,6 @@ void initialize() {
 void loop() {
   static uint32_t ulPublishCount = 0, ulTopicCount = 0;
   static const uint32_t ulMaxPublishCount = configMAX_PUBLUSH_COUNT;
-  static NetworkContext_t xNetworkContext = {0};
   static MQTTContext_t xMQTTContext = {0};
   static MQTTStatus_t xMQTTStatus;
   static esp8266TransportStatus_t xNetworkStatus;
@@ -306,7 +303,7 @@ void loop() {
   }
 
   std::cout << "Creating an MQTT connection to " << configMQTT_BROKER_ENDPOINT "." << std::endl;
-  prvCreateMQTTConnectionWithBroker(&xMQTTContext, &xNetworkContext);
+  prvCreateMQTTConnectionWithBroker(&xMQTTContext, NULL);
 
   /**************************** Subscribe. ******************************/
 
