@@ -173,26 +173,25 @@ check_rx_buffer:
 }
 
 void *txThread(void *args) {
-    char c;
+
     while (run) {
         if (txPos) { //bytes available to send?
             pthread_mutex_lock(&txBufferLock);
-            c = *txBuffer;
-            for (unsigned int i = 0; i < txPos - 1; i++) {
-                txBuffer[i] = txBuffer[i+1];
+            for (unsigned int i = 0; i < txPos; i++) {
+                if (write(serial_fd, &txBuffer[i], 1) == -1) {
+                    perror("Error trying to write to serial device.");
+                    run = 0;
+                    pthread_mutex_unlock(&txBufferLock);
+                    goto stop;
+                }
             }
-            txPos--;
+            txPos = 0;
             pthread_mutex_unlock(&txBufferLock);
-            if (write(serial_fd, &c, 1) == -1) {
-                perror("Error trying to write to serial device.");
-                run = 0;
-                break;
-            }
         }
         else {
             usleep(1000); //block, then check for bytes in tx_Buffer again.
         }
     }
-
+stop:
     return NULL;
 }
