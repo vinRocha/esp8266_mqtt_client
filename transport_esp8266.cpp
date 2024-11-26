@@ -43,7 +43,6 @@
  */
 static pthread_t thread_id; //in FreeRTOS this will be an high priority task.
 static void *rxThread(void *args);
-//static pthread_mutex_t RxTxLock = PTHREAD_MUTEX_INITIALIZER;
 static mqd_t controlQTx, controlQRx, dataQTx, dataQRx;
 static const char *control_mq_name = "/esp8266_control";
 static const char *data_mq_name = "/esp8266_data";
@@ -159,12 +158,9 @@ int32_t esp8266AT_send(NetworkContext_t *pNetworkContext, const void *pBuffer, s
 
     //In a single ATSEND command, we can send up to 2048 bytes at a time;
     int32_t bytes_sent = 0;
-
     char command[] = "AT+CIPSEND=2048";
     char c;
-//    if (pthread_mutex_trylock(&RxTxLock) == EBUSY) {
-//        return 0;
-//    }
+
     while (bytesToSend / 2048) {
         //Send AT command
         for(int i = 0; command[i]; i++) {
@@ -201,7 +197,6 @@ int32_t esp8266AT_send(NetworkContext_t *pNetworkContext, const void *pBuffer, s
     SLEEP;
     //Should check for errors here... but for now, only clear control buffer.
     while (mq_receive(controlQRx, &c, 1, NULL) > 0);
-//    pthread_mutex_unlock(&RxTxLock);
 
     return bytes_sent;
 }
@@ -244,7 +239,25 @@ void start_TCP(const char *pHostName, const char *port) {
 
     char c;
 
-    //AT Command header
+    //Close existing TCP connection, if any
+    xSerialPutChar(NULL, 'A', TX_BLOCK);
+    xSerialPutChar(NULL, 'T', TX_BLOCK);
+    xSerialPutChar(NULL, '+', TX_BLOCK);
+    xSerialPutChar(NULL, 'C', TX_BLOCK);
+    xSerialPutChar(NULL, 'I', TX_BLOCK);
+    xSerialPutChar(NULL, 'P', TX_BLOCK);
+    xSerialPutChar(NULL, 'C', TX_BLOCK);
+    xSerialPutChar(NULL, 'L', TX_BLOCK);
+    xSerialPutChar(NULL, 'O', TX_BLOCK);
+    xSerialPutChar(NULL, 'S', TX_BLOCK);
+    xSerialPutChar(NULL, 'E', TX_BLOCK);
+    xSerialPutChar(NULL, '\r', TX_BLOCK);
+    xSerialPutChar(NULL, '\n', TX_BLOCK);
+    SLEEP;
+    //Clear rx control buffer
+    while (mq_receive(controlQRx, &c, 1, NULL) > 0);
+
+    //AT header to start TCP connection
     xSerialPutChar(NULL, 'A', TX_BLOCK);
     xSerialPutChar(NULL, 'T', TX_BLOCK);
     xSerialPutChar(NULL, '+', TX_BLOCK);
@@ -316,7 +329,6 @@ void *rxThread(void *args) {
                         if (c[3] == 'D') {
                             while(!xSerialGetChar(NULL, (signed char*) &c[4], RX_BLOCK));
                             if (c[4] == ',') { //Hit Magic header!! We got data!!
-//                                pthread_mutex_lock(&RxTxLock);
                                 c[9] = 0;
                                 index = 0;
                                 while(index < 9) {
@@ -332,7 +344,6 @@ void *rxThread(void *args) {
                                     while(!xSerialGetChar(NULL, (signed char*) c, RX_BLOCK));
                                     mq_send(dataQTx, c, 1, 0);
                                 }
-//                                pthread_mutex_unlock(&RxTxLock);
                             }
                             else {
                                 send_to_controlQ(5, c);
